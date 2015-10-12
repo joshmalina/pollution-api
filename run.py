@@ -8,7 +8,7 @@ app = Eve()
 def index():	
 	forest = rforest.forest()
 	frcast = forecast.forecast(forest.X_train.columns, forest.rf)
-	return frcast.df.to_json()
+	return flask.json.jsonify({'predictions':frcast.df})
 
 if __name__ == '__main__':
 	app.run(debug=True)
