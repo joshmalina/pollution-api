@@ -11,7 +11,7 @@ class forest():
         self.rf = self.buildForest(self.X_train, self.y_train)
         
     def prepData(self, df):
-        self.df = df
+        #self.df = df        
         return self.splitSet(df)       
         
     def splitSet(self, df):
@@ -20,7 +20,7 @@ class forest():
         return X_train, X_test, y_train, y_test
     
     def buildForest(self, X_train, y_train):
-        NUM_TREES = 10
+        NUM_TREES = 200
         NUM_JOBS = 1
         rf = RandomForestRegressor(n_estimators=NUM_TREES, verbose=1, n_jobs=NUM_JOBS)
         rf.fit_transform(X_train, y_train)

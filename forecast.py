@@ -1,7 +1,8 @@
 from requests import get
-from pandas import DataFrame
+from pandas import DataFrame, get_dummies, concat
 from numpy import zeros
 import twitter
+import datetime
 
 class forecast(object):    
     
@@ -32,15 +33,25 @@ class forecast(object):
         
     def extractRow(self, one):   
         date = one['FCTTIME']
-        return dict(mday=date['mday'], wday=self.day_to_int(date['weekday_name']), pressurei=one['mslp']['english'], dewpti=one['dewpoint']['english'], hum=one['humidity'], tempm=one['temp']['metric'], wdird=one['wdir']['degrees'], wspdm=one['wspd']['metric'])
+        return dict(mday=date['mday'], wday=self.day_to_int(date['weekday_name']), pressurei=one['mslp']['english'], dewpti=one['dewpoint']['english'], hum=one['humidity'], tempm=one['temp']['metric'], wdird=one['wdir']['degrees'], wspdm=one['wspd']['metric'], wdire=one['wdir']['dir'])
          
     def extractRows(self):
         return DataFrame([self.extractRow(x) for x in self.raw])    
 
     def get_prev_pol(self):
+        tweets_raw = self.api.GetUserTimeline(screen_name='@BeijingAir')
+        pollution_recent = [int(s.text.split(';')[-2]) for idx, s in enumerate(tweets_raw) if 6 > idx > 0]
+        last_time = str(tweets_raw[0].text.split(';')[0])
+        adate = datetime.datetime.strptime(last_time, "%m-%d-%Y %H:%M")
+        tms = []
+        # want to incorporate this for loop in addPredictions so we are not looping twice
+        for i in xrange(1, 241):
+            tms.append(adate + datetime.timedelta(hours=i))
+        times_formatted = map(lambda x: x.strftime("%A at %I:%M%p"), tms)
         tweets = [s.text for s in self.api.GetUserTimeline(screen_name='@BeijingAir')]
-        # we can probably just stop at five, rather than indexing them back out
-        return [int(x.split(';')[-2]) for x in tweets][0:5]
+        ## we can probably just stop at five, rather than indexing them back out
+        #return {'values': pollution_recent, 'times': last_time}
+        return {'p':pollution_recent, 't':times_formatted}
 
     def imputeVals(self, df):
         # any missing values in the test frame need to be imputed with all zeroes
@@ -49,7 +60,9 @@ class forecast(object):
             df[val] = zeros(df.shape[0])        
         return df
 
-    def addPredictions(self, df, values):
+    def addPredictions(self, df, vals):
+        values = vals['p']
+        #values = recent_pol.values        
         predictions = zeros(len(df))                
         preds = []        
         # reorder so that in the same shape as the model
@@ -66,16 +79,21 @@ class forecast(object):
             # drop last value
             values.pop()            
             # add to list of predictions
-            preds.append(prediction.item())
+            preds.append({'p':prediction.item(), 't':vals['t'][i]})
         
         # add to data frame
         #df['predictions'] = preds
-        # return predictions
-        return preds
+        return {'predictions':preds}
+        #return {predictions: preds, times: recent_pol.times}
+
+    def categorizeVars(self):
+        df = self.extractRows()
+        return concat([df, get_dummies(df.wdire)], axis=1)
 
 
     def prepForRF(self):
-        df = self.extractRows()
+        df = self.categorizeVars()
+        df = df.rename(columns={'E':'East', 'W':'West', 'N':'North', 'S':'South'})
         df = self.imputeVals(df)
         df = self.addPredictions(df, self.get_prev_pol())
         return df
