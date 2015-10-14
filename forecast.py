@@ -39,18 +39,25 @@ class forecast(object):
         return DataFrame([self.extractRow(x) for x in self.raw])    
 
     def get_prev_pol(self):
+        #NUM_PREVIOUS = 5
+        NUM_PREVIOUS = 1
+        # get tweets from embassy
         tweets_raw = self.api.GetUserTimeline(screen_name='@BeijingAir')
-        pollution_recent = [int(s.text.split(';')[-2]) for idx, s in enumerate(tweets_raw) if 6 > idx > 0]
+        # collect the five most recent, extract integer value
+        pollution_recent = [int(s.text.split(';')[-2]) for idx, s in enumerate(tweets_raw) if (NUM_PREVIOUS + 1) > idx > 0]
+        # identify the time of the most recent tweet, t=0 (all prediction will be at times t=1, t=2 ...)
         last_time = str(tweets_raw[0].text.split(';')[0])
+        # format this into a time struct
         adate = datetime.datetime.strptime(last_time, "%m-%d-%Y %H:%M")
+        # instantiate an empty list of times
         tms = []
+        # create a list of 240 hours into the future
         # want to incorporate this for loop in addPredictions so we are not looping twice
         for i in xrange(1, 241):
-            tms.append(adate + datetime.timedelta(hours=i))
+            tms.append(adate + datetime.timedelta(hours=i))            
+        # make the times look good, aka Wednesday at 2pm
         times_formatted = map(lambda x: x.strftime("%A at %I:%M%p"), tms)
-        tweets = [s.text for s in self.api.GetUserTimeline(screen_name='@BeijingAir')]
-        ## we can probably just stop at five, rather than indexing them back out
-        #return {'values': pollution_recent, 'times': last_time}
+        # return a dictionary of the five most recent pollution values + 240 times for the future
         return {'p':pollution_recent, 't':times_formatted}
 
     def imputeVals(self, df):
@@ -61,30 +68,36 @@ class forecast(object):
         return df
 
     def addPredictions(self, df, vals):
-        values = vals['p']
-        #values = recent_pol.values        
-        predictions = zeros(len(df))                
-        preds = []        
-        # reorder so that in the same shape as the model
+        #NAMES_OF_PREV = ['nminus1Val', 'nminus2Val', 'nminus3Val', 'nminus4Val', 'nminus5Val']
+        NAMES_OF_PREV = ['nminus5Val']
+        # extract the five most recent pollution vals from the dictionary
+        #values = vals['p']
+        values = vals['p'][0]
+        # instantiate an empty list for the predictions
+        preds = []
+
+        # reorder columns that in the same shape as the model
         # very important -- otherwise will put the wrong weight on predictors
         df = df[self.forestColumnNames]
 
-        for i in xrange(len(df)):          
-            # fill row
-            df.loc[i, ['nminus1Val', 'nminus2Val', 'nminus3Val', 'nminus4Val', 'nminus5Val']] = values
+        # for the length of the future values, (10 days * 24 hours = 240)
+        for i in xrange(len(df)): 
+            # fill row with previous pollution values
+            df.loc[i, NAMES_OF_PREV] = values
             # make a prediction
             prediction = self.frst.predict(df.ix[i])                      
-            # add prediction to front
-            values.insert(0, prediction.item())           
+            # add prediction to front of values
+            #values.insert(0, prediction.item()) 
+            values = prediction.item()          
             # drop last value
-            values.pop()            
+            #values.pop()            
             # add to list of predictions
             preds.append({'p':prediction.item(), 't':vals['t'][i]})
         
         # add to data frame
+        # might be useful elsewhere
         #df['predictions'] = preds
         return {'predictions':preds}
-        #return {predictions: preds, times: recent_pol.times}
 
     def categorizeVars(self):
         df = self.extractRows()
