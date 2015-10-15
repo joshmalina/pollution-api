@@ -39,11 +39,9 @@ class forest():
         return X_train, X_test, y_train, y_test
     
     def buildForest(self, X_train, y_train):
-        NUM_TREES = 500
+        NUM_TREES = 100
         NUM_JOBS = 1
         FEATURES_IN_EACH_TREE = "sqrt"
-        rf = RandomForestRegressor(n_estimators=NUM_TREES, verbose=1, n_jobs=NUM_JOBS, max_features=FEATURES_IN_EACH_TREE, oob_score=True)
+        rf = RandomForestRegressor(n_estimators=NUM_TREES, verbose=1, n_jobs=NUM_JOBS, max_features=FEATURES_IN_EACH_TREE, oob_score=True, max_depth=30)
         rf.fit_transform(X_train, y_train)
-        return rf    
-    
-        
+        return rf

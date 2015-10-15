@@ -39,6 +39,11 @@ class forecast(object):
         return DataFrame([self.extractRow(x) for x in self.raw])    
 
     def get_prev_pol(self):
+
+        # we actually need to grab the last two; since it's possible that the last one is the 24 hour average
+        # in this case, we need to use the next one, or our program will a) fail and our model will b) be using
+        # a bad value
+
         #NUM_PREVIOUS = 5
         NUM_PREVIOUS = 1
         # get tweets from embassy
