@@ -6,6 +6,11 @@ from decorators import crossdomain
 #app = Eve()
 app = Flask(__name__)
 
+app.debug = True
+
+@app.route('/')
+def hello_world():
+    return "Hello world!"
 
 @app.route('/forecast')
 @crossdomain(origin='http://localhost:9000')
@@ -16,4 +21,4 @@ def index():
 	return json.jsonify(frcast.df)
 
 if __name__ == '__main__':
-	app.run(debug=True)
+	app.run(host='0.0.0.0', debug=True)
