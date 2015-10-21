@@ -3,16 +3,15 @@ import forecast
 import rforest
 from flask import Flask, json
 from decorators import crossdomain
-#app = Eve()
-app = Flask(__name__)
+application = Flask(__name__)
 
-app.debug = True
+application.debug = True
 
-@app.route('/')
+@application.route('/')
 def hello_world():
     return "Hello world!"
 
-@app.route('/forecast')
+@application.route('/forecast')
 @crossdomain(origin='http://localhost:9000')
 def index():	
 	forest = rforest.forest(train=False)
@@ -21,4 +20,4 @@ def index():
 	return json.jsonify(frcast.df)
 
 if __name__ == '__main__':
-	app.run(host='0.0.0.0', debug=True)
+	application.run(host='0.0.0.0', debug=True)
