@@ -2,7 +2,7 @@
 import forecast
 import rforest
 from flask import Flask, json
-from decorators import crossdomain
+#from decorators import crossdomain
 application = Flask(__name__)
 
 application.debug = True
@@ -12,7 +12,7 @@ def hello_world():
     return "Hello world!"
 
 @application.route('/forecast')
-@crossdomain(origin='http://localhost:9000')
+#@crossdomain(origin='http://localhost:9000')
 def index():	
 	forest = rforest.forest(train=False)
 	frcast = forecast.forecast(forest.X_train.columns, forest.rf)
@@ -20,6 +20,6 @@ def index():
 	return json.jsonify(frcast.df)
 
 if __name__ == '__main__':
-	application.run(debug=True)
+	#application.run(debug=True)
 	# use on live
-	#application.run(host='0.0.0.0', debug=True)
+	application.run(host='0.0.0.0', debug=True)
