@@ -45,13 +45,15 @@ class forecast(object):
         # a bad value
 
         #NUM_PREVIOUS = 5
-        NUM_PREVIOUS = 1
+        NUM_PREVIOUS = 2
         # get tweets from embassy
         tweets_raw = self.api.GetUserTimeline(screen_name='@BeijingAir')
         # collect the five most recent, extract integer value
         pollution_recent = [int(s.text.split(';')[-2]) for idx, s in enumerate(tweets_raw) if (NUM_PREVIOUS + 1) > idx > 0]
         # identify the time of the most recent tweet, t=0 (all prediction will be at times t=1, t=2 ...)
         last_time = str(tweets_raw[0].text.split(';')[0])
+        if len(last_time) > 10:
+            last_time = str(tweets_raw[1].text.split(';')[0])    
         # format this into a time struct
         adate = datetime.datetime.strptime(last_time, "%m-%d-%Y %H:%M")
         # instantiate an empty list of times
@@ -62,8 +64,9 @@ class forecast(object):
             tms.append(adate + datetime.timedelta(hours=i))            
         # make the times look good, aka Wednesday at 2pm
         times_formatted = map(lambda x: x.strftime("%A at %I:%M%p"), tms)
+        t_raw = map(lambda x: x.strftime("%Y-%m-%d %H:%M"), tms)
         # return a dictionary of the five most recent pollution values + 240 times for the future
-        return {'p':pollution_recent, 't':times_formatted}
+        return {'p':pollution_recent, 't':times_formatted, 't_raw': t_raw}
 
     def imputeVals(self, df):
         # any missing values in the test frame need to be imputed with all zeroes
@@ -97,7 +100,7 @@ class forecast(object):
             # drop last value
             #values.pop()            
             # add to list of predictions
-            preds.append({'p':prediction.item(), 't':vals['t'][i]})
+            preds.append({'p':prediction.item(), 't':vals['t'][i], 't_raw':vals['t_raw'][i]})
         
         # add to data frame
         # might be useful elsewhere

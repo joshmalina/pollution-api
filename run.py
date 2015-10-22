@@ -20,4 +20,6 @@ def index():
 	return json.jsonify(frcast.df)
 
 if __name__ == '__main__':
-	application.run(host='0.0.0.0', debug=True)
+	application.run(debug=True)
+	# use on live
+	#application.run(host='0.0.0.0', debug=True)
