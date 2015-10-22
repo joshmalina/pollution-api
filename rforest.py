@@ -13,12 +13,12 @@ class forest():
         data = read_csv(CSV_FILE)
         self.X_train, self.X_test, self.y_train, self.y_test = self.prepData(data)
         #self.rf = self.buildForest(self.X_train, self.y_train)
-        randFor = self.buildForest(self.X_train, self.y_train)
+        #randFor = self.buildForest(self.X_train, self.y_train)
         #else:
-        self.rf = randFor
+        #self.rf = randFor
         #self.rf = self.loadRF()
         #self.saveRF(randFor)
-        #self.loadRF()
+        self.loadRF()
 
     def saveRF(self, rf):
         with open('randomF.cpickle', 'wb') as f:
