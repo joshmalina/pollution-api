@@ -2,6 +2,8 @@ from pandas import read_csv, DataFrame
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.cross_validation import train_test_split
 import cPickle
+# for production
+#import pickle as cPickle
 
 # should be a streamlined function since serving content to the web
 class forest():
