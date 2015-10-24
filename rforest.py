@@ -13,15 +13,15 @@ class forest():
         data = read_csv(CSV_FILE)
         self.X_train, self.X_test, self.y_train, self.y_test = self.prepData(data)
         #self.rf = self.buildForest(self.X_train, self.y_train)
-        randFor = self.buildForest(self.X_train, self.y_train)
+        #randFor = self.buildForest(self.X_train, self.y_train)
         #else:
-        self.rf = randFor
+        #self.rf = randFor
         #self.saveRF(randFor)
-        #self.loadRF()
+        self.loadRF()
 
     def saveRF(self, rf):
         with open('randomF.cpickle', 'wb') as f:
-            cPickle.dump(rf, f, protocol=2, encoding='latin1')
+            cPickle.dump(rf, f, protocol=2)
 
     def loadRF(self):
         with open('randomF.cpickle', 'rb') as f:
@@ -38,7 +38,7 @@ class forest():
         return X_train, X_test, y_train, y_test
     
     def buildForest(self, X_train, y_train):
-        NUM_TREES = 1
+        NUM_TREES = 100
         NUM_JOBS = 1
         FEATURES_IN_EACH_TREE = "sqrt"
         rf = RandomForestRegressor(n_estimators=NUM_TREES, verbose=1, n_jobs=NUM_JOBS, max_features=FEATURES_IN_EACH_TREE, oob_score=True, max_depth=25)
