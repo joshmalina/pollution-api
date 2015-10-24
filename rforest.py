@@ -7,9 +7,7 @@ import cPickle
 class forest():
     
     def __init__(self, train):
-        #if train:
         CSV_FILE = 'fifth_prev.csv'
-        #CSV_FILE = 'data_pruned_.csv'
         data = read_csv(CSV_FILE)
         self.X_train, self.X_test, self.y_train, self.y_test = self.prepData(data)
         #self.rf = self.buildForest(self.X_train, self.y_train)
