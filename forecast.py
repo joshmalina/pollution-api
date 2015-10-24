@@ -51,9 +51,9 @@ class forecast(object):
         # collect the five most recent, extract integer value
         pollution_recent = [int(s.text.split(';')[-2]) for idx, s in enumerate(tweets_raw) if (NUM_PREVIOUS + 1) > idx > 0]
         # identify the time of the most recent tweet, t=0 (all prediction will be at times t=1, t=2 ...)
-        last_time = str(tweets_raw[0].text.split(';')[0])
+        last_time = str(tweets_raw[1].text.split(';')[0])
         if len(last_time) > 10:
-            last_time = str(tweets_raw[1].text.split(';')[0])    
+            last_time = str(tweets_raw[0].text.split(';')[0])    
         # format this into a time struct
         adate = datetime.datetime.strptime(last_time, "%m-%d-%Y %H:%M")
         # instantiate an empty list of times
