@@ -12,7 +12,8 @@ def hello_world():
     return "Hello world!"
 
 @application.route('/forecast')
-@crossdomain(origin='http://localhost:9000')
+#@crossdomain(origin='http://localhost:9000')
+@crossdomain(origin='http://pollution-ng.herokuapp.com')
 def index():	
 	forest = rforest.forest(train=False)
 	frcast = forecast.forecast(forest.X_train.columns, forest.rf)
