@@ -1,4 +1,3 @@
-#from eve import Eve
 import forecast
 import rforest
 from flask import Flask, json
@@ -15,7 +14,10 @@ def hello_world():
 #@crossdomain(origin='http://localhost:9000')
 #@crossdomain(origin='http://pollution-ng.herokuapp.com')
 @crossdomain(origin='*')
-def index():	
+def index():
+	# upon user request, lets call the twitter api, and see if the last time
+	# is the one in the db (last time not including 24 hour summaries)
+	# if its in the db, return that row, otherwise, build out the predictions
 	forest = rforest.forest(train=False)
 	frcast = forecast.forecast(forest.X_train.columns, forest.rf)
 	#return flask.json.jsonify({'predictions':frcast.df})

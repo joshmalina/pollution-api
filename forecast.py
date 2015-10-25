@@ -3,6 +3,7 @@ from pandas import DataFrame, get_dummies, concat
 from numpy import zeros
 import twitter
 import datetime
+from pymongo import MongoClient
 
 class forecast(object):    
     
@@ -36,37 +37,68 @@ class forecast(object):
         return dict(mday=date['mday'], wday=self.day_to_int(date['weekday_name']), pressurei=one['mslp']['english'], dewpti=one['dewpoint']['english'], hum=one['humidity'], tempm=one['temp']['metric'], wdird=one['wdir']['degrees'], wspdm=one['wspd']['metric'], wdire=one['wdir']['dir'])
          
     def extractRows(self):
-        return DataFrame([self.extractRow(x) for x in self.raw])    
+        return DataFrame([self.extractRow(x) for x in self.raw])
+
+    def extract(self, row):
+        DATEAREA = 0
+        POLAREA = -2              
+        return str(row.text.split(';')[DATEAREA]), int(row.text.split(';')[POLAREA])   
 
     def get_prev_pol(self):
 
-        # we actually need to grab the last two; since it's possible that the last one is the 24 hour average
-        # in this case, we need to use the next one, or our program will a) fail and our model will b) be using
-        # a bad value
-
-        #NUM_PREVIOUS = 5
-        NUM_PREVIOUS = 2
-        # get tweets from embassy
         tweets_raw = self.api.GetUserTimeline(screen_name='@BeijingAir')
-        # collect the five most recent, extract integer value
-        pollution_recent = [int(s.text.split(';')[-2]) for idx, s in enumerate(tweets_raw) if (NUM_PREVIOUS + 1) > idx > 0]
-        # identify the time of the most recent tweet, t=0 (all prediction will be at times t=1, t=2 ...)
-        last_time = str(tweets_raw[1].text.split(';')[0])
-        if len(last_time) > 10:
-            last_time = str(tweets_raw[0].text.split(';')[0])    
+        last_time, last_pol = self.extract(tweets_raw[0])
+
+        # it's possible that the last one is the 24 hour average, so we need to grab the one before
+        if len(last_time) > 17:
+            last_time, last_pol = self.extract(tweets_raw[1])
+        
         # format this into a time struct
         adate = datetime.datetime.strptime(last_time, "%m-%d-%Y %H:%M")
+
         # instantiate an empty list of times
         tms = []
+
         # create a list of 240 hours into the future
         # want to incorporate this for loop in addPredictions so we are not looping twice
         for i in xrange(1, 241):
             tms.append(adate + datetime.timedelta(hours=i))            
         # make the times look good, aka Wednesday at 2pm
         times_formatted = map(lambda x: x.strftime("%A at %I:%M%p"), tms)
-        t_raw = map(lambda x: x.strftime("%Y-%m-%d %H:%M"), tms)
+        t_raw = map(lambda x: x.strftime("%Y-%m-%d %H:%M"), tms)        
         # return a dictionary of the five most recent pollution values + 240 times for the future
-        return {'p':pollution_recent, 't':times_formatted, 't_raw': t_raw}
+        return {'p':last_pol, 't':times_formatted, 't_raw': t_raw, 'collected_at': adate, 't_obj': tms}
+
+    def addToDB(self, document):
+        remote_connection = ''
+        client = MongoClient()
+        # access database
+        db = client.pollution
+        # access collection
+        collectn = db.pollution_values
+        # check for already existing
+        #cursor = collectn.find({document['_id']: {"$exists": True}}).limit(1)
+        cursor = collectn.find({"_id" : document['_id']})
+
+        if cursor.count() == 0:
+            return collectn.insert_one(document)
+
+    def updatePrevPol(self, pollution_val, for_what_time):
+        remote_connection = ''
+        client = MongoClient()
+        # access database
+        db = client.pollution
+        # access collection
+        collectn = db.pollution_values        
+        result = collectn.update_one(
+            {"_id": for_what_time},
+            {
+                "$set": {
+                    "actual": pollution_val
+                }
+            }
+        )
+    
 
     def imputeVals(self, df):
         # any missing values in the test frame need to be imputed with all zeroes
@@ -76,14 +108,13 @@ class forecast(object):
         return df
 
     def addPredictions(self, df, vals):
-        #NAMES_OF_PREV = ['nminus1Val', 'nminus2Val', 'nminus3Val', 'nminus4Val', 'nminus5Val']
         NAMES_OF_PREV = ['nminus5Val']
-        # extract the five most recent pollution vals from the dictionary
-        #values = vals['p']
-        values = vals['p'][0]
+        values = vals['p']
+        # lets store this current hours actual pollution value in the db
+        self.updatePrevPol(pollution_val=values, for_what_time=vals['collected_at']) 
         # instantiate an empty list for the predictions
         preds = []
-
+        fordb = []
         # reorder columns that in the same shape as the model
         # very important -- otherwise will put the wrong weight on predictors
         df = df[self.forestColumnNames]
@@ -100,12 +131,20 @@ class forecast(object):
             # drop last value
             #values.pop()            
             # add to list of predictions
-            preds.append({'p':prediction.item(), 't':vals['t'][i], 't_raw':vals['t_raw'][i]})
+            preds.append({'p':prediction.item(), 't':vals['t'][i], 't_raw':vals['t_raw'][i], 't_obj':vals['t_obj'][i]})
+            fordb.append({'p':prediction.item(), 't_obj':vals['t_obj'][i]})
         
         # add to data frame
         # might be useful elsewhere
         #df['predictions'] = preds
-        return {'predictions':preds}
+        to_return = {'predictions':preds, 'collected_at':vals['collected_at']}
+        # want to update the previous row with the pollution value
+
+        # only do this if the does not exist yet
+
+        # this is what we put into a new row
+        self.addToDB({'_id': vals['collected_at'], 'predictions':fordb})
+        return to_return
 
     def categorizeVars(self):
         df = self.extractRows()
@@ -118,6 +157,7 @@ class forecast(object):
         df = self.imputeVals(df)
         df = self.addPredictions(df, self.get_prev_pol())
         return df
+
     
     
     
