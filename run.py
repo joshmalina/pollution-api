@@ -1,5 +1,6 @@
 import forecast
 import rforest
+import poldb
 from flask import Flask, json
 from decorators import crossdomain
 application = Flask(__name__)
@@ -11,14 +12,26 @@ def hello_world():
     return "Hello pol!"
 
 @application.route('/forecast')
-#@crossdomain(origin='http://localhost:9000')
-#@crossdomain(origin='http://pollution-ng.herokuapp.com')
 @crossdomain(origin='*')
-def index():	
+def index():
+	# upon user request, lets call the twitter api, and see if the last time
+	# is the one in the db (last time not including 24 hour summaries)
+	# if its in the db, return that row, otherwise, build out the predictions
+
+	# on the other hand, lets make predictions as a cron job every 60 minutes,
+	# and just simply return the latest row to the user
 	forest = rforest.forest(train=False)
 	frcast = forecast.forecast(forest.X_train.columns, forest.rf)
-	#return flask.json.jsonify({'predictions':frcast.df})
 	return json.jsonify(frcast.df)
 
+# lets grab the latest row of predictions
+@application.route('/getLatest')
+@crossdomain(origin='*')
+def getLatest():
+	db = poldb.Poldb()
+	return json.jsonify(db.getLatestPol())
+	#return 'cats'
+
 if __name__ == '__main__':
-	application.run(host='0.0.0.0', debug=True)
+	application.run(debug=True)
+

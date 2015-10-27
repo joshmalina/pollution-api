@@ -14,7 +14,6 @@ class forest():
         #randFor = self.buildForest(self.X_train, self.y_train)
         #else:
         #self.rf = randFor
-        #self.rf = self.loadRF()
         #self.saveRF(randFor)
         self.loadRF()
 
@@ -40,6 +39,6 @@ class forest():
         NUM_TREES = 100
         NUM_JOBS = 1
         FEATURES_IN_EACH_TREE = "sqrt"
-        rf = RandomForestRegressor(n_estimators=NUM_TREES, verbose=1, n_jobs=NUM_JOBS, max_features=FEATURES_IN_EACH_TREE, oob_score=True, max_depth=30)
+        rf = RandomForestRegressor(n_estimators=NUM_TREES, verbose=1, n_jobs=NUM_JOBS, max_features=FEATURES_IN_EACH_TREE, oob_score=True, max_depth=25)
         rf.fit_transform(X_train, y_train)
         return rf
