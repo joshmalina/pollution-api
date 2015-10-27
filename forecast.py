@@ -8,7 +8,6 @@ from pymongo import MongoClient
 class forecast(object):    
     
     # when users navigate here, we load the forest
-    # for performance, we probably should build the tree awhen navigating to the index
     def __init__(self, colnames, randomforest):
         # these keys might need to be regotten from time to time
         self.api = twitter.Api(consumer_key='hjnVjCeTGhG9ReoG35MyDerx1',consumer_secret='oPTjLl5nEBWqVfxGC5Db04uDWzzhVVh3hRUb643jmkZrn7zhIW', access_token_key='3173034274-Lj194JwBIoHIAMQDrUXvZw2YlFNsgNMYd4xVz1R',access_token_secret='pLQbEnbbr8YJRFmMvfoWdVwWwBfYN0UjSrBOHA01yC39M')
@@ -67,13 +66,13 @@ class forecast(object):
         times_formatted = map(lambda x: x.strftime("%A at %I:%M%p"), tms)
         t_raw = map(lambda x: x.strftime("%Y-%m-%d %H:%M"), tms)        
         # return a dictionary of the five most recent pollution values + 240 times for the future
-        return {'p':last_pol, 't':times_formatted, 't_raw': t_raw, 'collected_at': adate, 't_obj': tms}
+        return {'p':last_pol, 'collected_at': adate, 't_obj': tms}
 
     def addToDB(self, document):
-        remote_connection = ''
-        client = MongoClient()
+        MONGODB_URI = 'mongodb://joshuamalina:egroeg499@ds045644.mongolab.com:45644/pollution'
+        client = MongoClient(MONGODB_URI)
         # access database
-        db = client.pollution
+        db = client.get_default_database()
         # access collection
         collectn = db.pollution_values
         # check for already existing
@@ -83,21 +82,21 @@ class forecast(object):
         if cursor.count() == 0:
             return collectn.insert_one(document)
 
-    def updatePrevPol(self, pollution_val, for_what_time):
-        remote_connection = ''
-        client = MongoClient()
-        # access database
-        db = client.pollution
-        # access collection
-        collectn = db.pollution_values        
-        result = collectn.update_one(
-            {"_id": for_what_time},
-            {
-                "$set": {
-                    "actual": pollution_val
-                }
-            }
-        )
+    # def updatePrevPol(self, pollution_val, for_what_time):
+    #     remote_connection = ''
+    #     client = MongoClient()
+    #     # access database
+    #     db = client.pollution
+    #     # access collection
+    #     collectn = db.pollution_values        
+    #     result = collectn.update_one(
+    #         {"_id": for_what_time},
+    #         {
+    #             "$set": {
+    #                 "actual": pollution_val
+    #             }
+    #         }
+    #     )
     
 
     def imputeVals(self, df):
@@ -110,10 +109,11 @@ class forecast(object):
     def addPredictions(self, df, vals):
         NAMES_OF_PREV = ['nminus5Val']
         values = vals['p']
+        currently = vals['p']
         # lets store this current hours actual pollution value in the db
-        self.updatePrevPol(pollution_val=values, for_what_time=vals['collected_at']) 
+        # not sure where this will be necessary anymore
+        #self.updatePrevPol(pollution_val=values, for_what_time=vals['collected_at']) 
         # instantiate an empty list for the predictions
-        preds = []
         fordb = []
         # reorder columns that in the same shape as the model
         # very important -- otherwise will put the wrong weight on predictors
@@ -126,25 +126,14 @@ class forecast(object):
             # make a prediction
             prediction = self.frst.predict(df.ix[i])                      
             # add prediction to front of values
-            #values.insert(0, prediction.item()) 
             values = prediction.item()          
-            # drop last value
-            #values.pop()            
             # add to list of predictions
-            preds.append({'p':prediction.item(), 't':vals['t'][i], 't_raw':vals['t_raw'][i], 't_obj':vals['t_obj'][i]})
-            fordb.append({'p':prediction.item(), 't_obj':vals['t_obj'][i]})
+            fordb.append({'p':prediction.item(), 't_obj':vals['t_obj'][i]})        
         
-        # add to data frame
-        # might be useful elsewhere
-        #df['predictions'] = preds
-        to_return = {'predictions':preds, 'collected_at':vals['collected_at']}
-        # want to update the previous row with the pollution value
-
-        # only do this if the does not exist yet
-
+        add_to_db = {'_id': vals['collected_at'], 'predictions':fordb, 'currently':currently}
         # this is what we put into a new row
-        self.addToDB({'_id': vals['collected_at'], 'predictions':fordb})
-        return to_return
+        self.addToDB(add_to_db)
+        return add_to_db
 
     def categorizeVars(self):
         df = self.extractRows()
