@@ -32,6 +32,7 @@ def getLatest():
 	return json.jsonify(db.getLatestPol())
 	#return 'cats'
 
+# for production, must have host='0.0.0.0'
 if __name__ == '__main__':
-	application.run(debug=True)
+	application.run(host='0.0.0.0', debug=True)
 
