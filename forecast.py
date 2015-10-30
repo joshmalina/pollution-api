@@ -4,6 +4,7 @@ from numpy import zeros
 import twitter
 import datetime
 from pymongo import MongoClient
+from dateutil import parser
 
 class forecast(object):    
     
@@ -41,7 +42,7 @@ class forecast(object):
     def extract(self, row):
         DATEAREA = 0
         POLAREA = -2              
-        return str(row.text.split(';')[DATEAREA]), int(row.text.split(';')[POLAREA])   
+        return str(row.text.split(';')[DATEAREA] + ' +0800'), int(row.text.split(';')[POLAREA])   
 
     def get_prev_pol(self):
         tweets_raw = self.api.GetUserTimeline(screen_name='@BeijingAir')
@@ -52,7 +53,8 @@ class forecast(object):
             last_time, last_pol = self.extract(tweets_raw[1])
         
         # format this into a time struct
-        adate = datetime.datetime.strptime(last_time, "%m-%d-%Y %H:%M")
+        #adate = datetime.datetime.strptime(last_time, "%m-%d-%Y %H:%M %z")
+        adate = parser.parse(last_time)
 
         # instantiate an empty list of times
         tms = []
@@ -61,10 +63,7 @@ class forecast(object):
         # want to incorporate this for loop in addPredictions so we are not looping twice
         for i in xrange(1, 241):
             tms.append(adate + datetime.timedelta(hours=i))            
-        # make the times look good, aka Wednesday at 2pm
-        times_formatted = map(lambda x: x.strftime("%A at %I:%M%p"), tms)
 
-        t_raw = map(lambda x: x.strftime("%Y-%m-%d %H:%M"), tms)        
         # return a dictionary of the five most recent pollution values + 240 times for the future
         return {'p':last_pol, 'collected_at': adate, 't_obj': tms}
 

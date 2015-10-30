@@ -30,7 +30,13 @@ def index():
 def getLatest():
 	db = poldb.Poldb()
 	return json.jsonify(db.getLatestPol())
-	#return 'cats'
+
+@application.route('/getErrors')
+@crossdomain(origin='*')
+def getErrors():
+	db = poldb.Poldb()
+	return json.jsonify(db.getErrors())
+
 
 if __name__ == '__main__':
 	application.run(debug=True)
