@@ -17,12 +17,12 @@ class Poldb(object):
 
 	# return the latest hour of polluton predictions
 	def getLatestPol(self):
-		LAST_TO_FIRST = -1
 		db = self.getdb()
 		# since we have to sort, not sure if find_one would work, and it may be slower than find?
 		cursor = db[Poldb.P_COLL].find().sort('_id', DESCENDING).limit(5)
 		return list(cursor)[0]
 
+	# aggregates errors by what time is predicted for
 	def getErrors(self):
 		db = self.getdb()		
 		# build a dictionary of all recorded times and actual pollution values
@@ -56,6 +56,8 @@ class Poldb(object):
 		]
 		# initialize empty errors dictionary
 		errors = dict()
+		errors_by_val = dict()
+		raw_errors = []
 		# for each time we predicted
 		for i in db[Poldb.P_COLL].aggregate(pipeline4):
 		    # lookup the actual value of the date the prediction is made for
@@ -64,8 +66,9 @@ class Poldb(object):
 			if actual:
 		        # iterate through all the prediction n-1, n-2 that have been made for that time
 				for j in i["diffAndVal"]:
+					actual_val = actual.get("currently")
 		            # calcualte the error
-					err = abs(j["val"] - actual.get("currently"))
+					err = abs(j["val"] - actual_val)
 		            # find the distance at which it occured
 					timeOfErr = j["diff"]
 		            # convert it to hours
@@ -78,15 +81,21 @@ class Poldb(object):
 		            # otherwise start a new array for that distance    
 					else:
 						errors[timeOfErr] = [err]
-		ave_errors = dict()
-        # now that we have the raw errors for each distance, let's calculuate some statistics
-		for key, value in errors.iteritems():
-        	# grab mean and standard deviation    
-			ave_errors[key] = {"avg":mean(value), "std":std(value)}
-		return ave_errors
+					if actual_val in errors_by_val:
+						errors_by_val[actual_val].append(err)
+					else:
+						errors_by_val[actual_val] = [err]
+					raw_errors.append({'error': err, 'howFarOut': timeOfErr, 'actual': actual_val})
+		ave_errors = {key: self.remapDict(value) for key, value in errors.iteritems()}
+		ave_errors_by_val = {key: self.remapDict(value) for key, value in errors_by_val.iteritems()}		
+		return {"ave_errors_by_val": ave_errors_by_val, "ave_errors": ave_errors, "raw_errors": raw_errors}
 
 	def fromMiliToHours(self, militime):
 		return militime / 1000 / 60 / 60   
+
+	def remapDict(self, dictEntry):
+		return {"avg": mean(dictEntry), "std": std(dictEntry), "count":len(dictEntry)}
+
 
 
 
