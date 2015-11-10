@@ -1,5 +1,5 @@
 #!/bin/bash
 
-cd /Users/jm/Dropbox/Dev/pollution/api/
+cd /home/ubuntu/pollution-api/
 #source activate newenv
-/Users/jm/miniconda/envs/newenv/bin/python getAndStoreForecast.py
+/home/ubuntu/miniconda3/envs/myenv/bin/python getAndStoreForecast.py
