@@ -5,6 +5,8 @@ class Poldb(object):
 
 	# # our collection is called 'pollution_values'
 	P_COLL = 'pollution_values'
+	AVE_ERR_COLL = 'ave_errors'
+	AVE_ERR_BY_VALUE_COLL = 'ave_errors_by_val'
 
 	# return database, with optional collection
 	def __init__(self):
@@ -27,16 +29,7 @@ class Poldb(object):
 		db = self.getdb()		
 		# build a dictionary of all recorded times and actual pollution values
 		db[Poldb.P_COLL].find({},{"currently":1})
-		# aggregate the data set to expose the predictions for each time
-		# an example object
-		# {u'_id': datetime.datetime(2015, 11, 9, 6, 0),
-  			#u'diffAndVal': [
-  				#{u'diff': 864000000L, u'val': 194.53},
-  				#{u'diff': 860400000L, u'val': 197.75},
-  				#{u'diff': 856800000L, u'val': 88.46385714285717},
-  				#{u'diff': 853200000L, u'val': 89.06785714285714}
-		#   ]
-		#},
+
 		pipeline4 = [
 			# make a new object for each prediction n+1, n+2, ... n+240
 			{ "$unwind" : "$predictions" },
@@ -86,15 +79,41 @@ class Poldb(object):
 					else:
 						errors_by_val[actual_val] = [err]
 					raw_errors.append({'error': err, 'howFarOut': timeOfErr, 'actual': actual_val})
-		ave_errors = {key: self.remapDict(value) for key, value in errors.iteritems()}
-		ave_errors_by_val = {key: self.remapDict(value) for key, value in errors_by_val.iteritems()}		
-		return {"ave_errors_by_val": ave_errors_by_val, "ave_errors": ave_errors, "raw_errors": raw_errors}
+		ave_errors = {str(key): self.remapDict(value) for key, value in errors.iteritems()}
+		ave_errors_by_val = {str(key): self.remapDict(value) for key, value in errors_by_val.iteritems()}
+		self.addErrors(ave_errors, ave_errors_by_val)		
+		#return {"ave_errors_by_val": ave_errors_by_val, "ave_errors": ave_errors}
 
 	def fromMiliToHours(self, militime):
 		return militime / 1000 / 60 / 60   
 
 	def remapDict(self, dictEntry):
 		return {"avg": mean(dictEntry), "std": std(dictEntry), "count":len(dictEntry)}
+
+	# once per day, let's add the errors to two different collections in the database to reduce
+	# cost
+	def addErrors(self, ave_errors, ave_errors_by_val):
+		db = self.getdb()		
+		col_ave = db[Poldb.AVE_ERR_COLL]
+		# drop currently stored ave_errors
+		col_ave.drop()
+		# add most recent ave_errors
+		col_ave.insert_one(ave_errors)
+		# drop currently stored ave_errors_by_val
+		col_ave_by_val = db[Poldb.AVE_ERR_BY_VALUE_COLL]
+		col_ave_by_val.drop()
+		# add most recent ave_errors_by_val
+		col_ave_by_val.insert_one(ave_errors_by_val)
+
+	def getLatestErrors(self):
+		db = self.getdb()
+		# since we have to sort, not sure if find_one would work, and it may be slower than find?
+		cursor_ave = db[Poldb.AVE_ERR_COLL].find().sort('_id', DESCENDING).limit(1)
+		cursor_ave_by_val = db[Poldb.AVE_ERR_BY_VALUE_COLL].find().sort('_id', DESCENDING).limit(1)
+		return {"ave_errors_by_val": list(cursor_ave_by_val)[0], "ave_errors": list(cursor_ave)[0]}
+
+
+	
 
 
 

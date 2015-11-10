@@ -3,6 +3,7 @@ import rforest
 import poldb
 from flask import Flask, json
 from decorators import crossdomain
+from bson import json_util
 application = Flask(__name__)
 
 application.debug = True
@@ -31,11 +32,18 @@ def getLatest():
 	db = poldb.Poldb()
 	return json.jsonify(db.getLatestPol())
 
-@application.route('/getErrors')
+# @application.route('/getErrors')
+# @crossdomain(origin='*')
+# def getErrors():
+# 	db = poldb.Poldb()
+# 	return json.jsonify(db.getErrors())
+
+@application.route('/getLatestErrors')
 @crossdomain(origin='*')
-def getErrors():
-	db = poldb.Poldb()
-	return json.jsonify(db.getErrors())
+def getLatestErrors():
+	db = poldb.Poldb()	
+	return json_util.dumps(db.getLatestErrors())
+
 
 
 if __name__ == '__main__':
